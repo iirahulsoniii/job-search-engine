@@ -18,6 +18,23 @@ It simultaneously scrapes 9 different remote job portals (including stealth scra
 2. **Google Gemini API Key**: Get a free API key from Google AI Studio.
 3. Your **Resume** in PDF format.
 
+---
+
+### OS-Specific Setup Notes
+
+#### 🐧 Linux Users (Puppeteer Dependencies)
+If you are running this on Linux (e.g., Ubuntu/Debian), Puppeteer requires several system libraries to launch the headless browser. If the backend crashes on startup with a Chrome error, run the following to install the required dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install -yq gconf-service libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 libnspr4 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 ca-certificates fonts-liberation libnss3 lsb-release xdg-utils wget
+```
+
+#### 🪟 Windows Users (Path Formatting)
+When setting your `RESUME_PATH` in the `.env` file, ensure you use proper path formatting.
+**Correct:** `RESUME_PATH=C:\Users\YourName\Documents\resume.pdf` or `RESUME_PATH=C:/Users/YourName/Documents/resume.pdf`
+
+---
+
 ### 1. Backend Configuration
 1. Navigate to the `backend/` directory:
    ```bash
