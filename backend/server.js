@@ -34,6 +34,7 @@ async function getResumeText() {
 }
 
 const visaRegex = /visa sponsorship|sponsor visa|h1b|h-1b|h1-b|work permit sponsorship|will sponsor|visa support|visa provided|relocation support|visa and relocation|includes visa|relocation assistance|sponsor/i;
+const noVisaRegex = /no visa|not sponsor|not provide visa|visa sponsorship is not available|cannot sponsor|will not sponsor|without sponsorship|unable to sponsor|no sponsorship/i;
 const expRegex = /(\d+\+?)\s*(?:-|to)?\s*(\d+)?\s*years?(?:\s+of)?\s+(?:experience|exp)/i;
 
 // Global browser instance
@@ -320,13 +321,13 @@ app.get('/api/jobs', async (req, res) => {
         
         const jobsWithDetails = allBaseJobs.map((job) => {
             const description = job.description || '';
-            const visaSponsorship = visaRegex.test(description);
+            const visaSponsorship = visaRegex.test(description) && !noVisaRegex.test(description);
             const expMatch = description.match(expRegex);
             const experience = expMatch ? expMatch[0] : 'Not mentioned';
             return {
                 ...job,
                 description: undefined, 
-                visaSponsorship: visaSponsorship || req.query.visa === 'true', // assume true if searched specifically
+                visaSponsorship: visaSponsorship,
                 experience,
                 matchScore: null 
             };
