@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevHunt - Advanced Job Search</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="app">
+      <header class="navbar glass">
+        <div class="logo">
+          <span class="logo-icon">🚀</span>
+          <h1>DevHunt</h1>
+        </div>
+        <div class="search-bar">
+          <input type="text" id="keyword-input" placeholder="e.g. Software Engineer Java" value="Software Engineer Java">
+          <input type="text" id="location-input" placeholder="e.g. Australia" value="Australia">
+          <button id="search-btn" class="primary-btn">Search Jobs</button>
+        </div>
+      </header>
+      
+      <main class="layout-container">
+        <!-- Left Sidebar Filters -->
+        <aside class="sidebar glass">
+            <h2>Filters</h2>
+            
+            <div class="filter-group">
+                <h3>Date Posted</h3>
+                <select id="posted-input" class="filter-select">
+                    <option value="any">Any Time</option>
+                    <option value="24h" selected>Past 24 Hours</option>
+                    <option value="1w">Past Week</option>
+                    <option value="1m">Past Month</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <h3>Visa & Relocation</h3>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="visa-filter"> 
+                    <span class="custom-checkbox"></span>
+                    Sponsorship Available
+                </label>
+            </div>
+
+            <div class="filter-group">
+                <h3>Experience Level</h3>
+                <div class="checkbox-list">
+                    <label class="checkbox-label"><input type="checkbox" value="any" class="exp-checkbox" checked> <span class="custom-checkbox"></span>Any Experience</label>
+                    <label class="checkbox-label"><input type="checkbox" value="junior" class="exp-checkbox"> <span class="custom-checkbox"></span>Junior (0-2y)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="mid" class="exp-checkbox"> <span class="custom-checkbox"></span>Mid (3-5y)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="senior" class="exp-checkbox"> <span class="custom-checkbox"></span>Senior (5y+)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="not_mentioned" class="exp-checkbox"> <span class="custom-checkbox"></span>Not Mentioned</label>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <h3>Portals</h3>
+                <div class="checkbox-list">
+                    <label class="checkbox-label"><input type="checkbox" value="linkedin" class="portal-checkbox" checked> <span class="custom-checkbox"></span>LinkedIn</label>
+                    <label class="checkbox-label"><input type="checkbox" value="indeed" class="portal-checkbox"> <span class="custom-checkbox"></span>Indeed (Stealth)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="seek" class="portal-checkbox"> <span class="custom-checkbox"></span>Seek (Stealth)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="jora" class="portal-checkbox"> <span class="custom-checkbox"></span>Jora (Stealth)</label>
+                    <label class="checkbox-label"><input type="checkbox" value="remotive" class="portal-checkbox"> <span class="custom-checkbox"></span>Remotive</label>
+                    <label class="checkbox-label"><input type="checkbox" value="arbeitnow" class="portal-checkbox"> <span class="custom-checkbox"></span>Arbeitnow</label>
+                    <label class="checkbox-label"><input type="checkbox" value="remoteok" class="portal-checkbox"> <span class="custom-checkbox"></span>RemoteOK</label>
+                    <label class="checkbox-label"><input type="checkbox" value="weworkremotely" class="portal-checkbox"> <span class="custom-checkbox"></span>WeWorkRemotely</label>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="content-area">
+          <div class="controls">
+            <div class="status" id="status">Ready to search.</div>
+          </div>
+          
+          <div class="jobs-list" id="jobs-container">
+            <!-- Job cards will be injected here dynamically -->
+          </div>
+        </div>
+      </main>
+
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
