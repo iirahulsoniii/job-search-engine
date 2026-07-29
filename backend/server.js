@@ -50,6 +50,24 @@ async function initBrowser() {
 initBrowser();
 
 const scrapers = {
+    filterByRelevance: async (jobs, keyword, titleKey) => {
+        if (!keyword) return jobs;
+        let terms = keyword.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        if (terms.length === 0) return jobs;
+        
+        try {
+            const res = await axios.get(`https://api.datamuse.com/words?ml=${encodeURIComponent(keyword)}&max=10`);
+            const synonyms = res.data.map(item => item.word.toLowerCase());
+            terms = [...new Set([...terms, ...synonyms])];
+        } catch(e) {
+            console.error('Datamuse error:', e.message);
+        }
+
+        return jobs.filter(job => {
+            const title = (job[titleKey] || '').toLowerCase();
+            return terms.some(term => title.includes(term));
+        });
+    },
     linkedin: async (keyword, location, timeFilter) => {
         try {
             const url = `https://www.linkedin.com/jobs/search/?keywords=${keyword}&location=${location}${timeFilter}`;
@@ -82,8 +100,10 @@ const scrapers = {
     },
     remotive: async (keyword, location) => {
         try {
-            const response = await axios.get(`https://remotive.com/api/remote-jobs?search=${keyword}&limit=10`);
-            return (response.data.jobs || []).slice(0, 10).map(job => {
+            const response = await axios.get(`https://remotive.com/api/remote-jobs?search=${keyword}&limit=50`);
+            let jobs = response.data.jobs || [];
+            jobs = await scrapers.filterByRelevance(jobs, keyword, 'title');
+            return jobs.slice(0, 10).map(job => {
                 const $ = cheerio.load(job.description);
                 return {
                     title: job.title,
@@ -100,7 +120,8 @@ const scrapers = {
     arbeitnow: async (keyword, location) => {
         try {
             const response = await axios.get(`https://www.arbeitnow.com/api/job-board-api`);
-            const jobs = response.data.data.filter(j => j.title.toLowerCase().includes(keyword.toLowerCase()));
+            let jobs = response.data.data || [];
+            jobs = await scrapers.filterByRelevance(jobs, keyword, 'title');
             return jobs.slice(0, 10).map(job => {
                 const $ = cheerio.load(job.description);
                 return {
@@ -118,7 +139,9 @@ const scrapers = {
     remoteok: async (keyword, location) => {
         try {
             const response = await axios.get(`https://remoteok.com/api?keys=${keyword}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-            return (response.data || []).slice(1, 11).map(job => {
+            let jobs = (response.data || []).slice(1);
+            jobs = await scrapers.filterByRelevance(jobs, keyword, 'position');
+            return jobs.slice(0, 10).map(job => {
                 const $ = cheerio.load(job.description);
                 return {
                     title: job.position,
