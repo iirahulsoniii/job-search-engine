@@ -96,11 +96,36 @@ async function handleCalculateScore(job, scoreBtnElement) {
   }
 }
 
+function updateCompanyFilters() {
+  const companyFilterList = document.getElementById('company-filter-list');
+  if (!companyFilterList) return;
+  
+  const uniqueCompanies = [...new Set(currentJobs.map(job => job.company))].sort();
+  companyFilterList.innerHTML = '';
+  
+  if (uniqueCompanies.length === 0) {
+      companyFilterList.innerHTML = '<p style="color: #a0aec0; font-size: 0.85rem; padding: 0.25rem;">Companies will appear here after search.</p>';
+      return;
+  }
+  
+  uniqueCompanies.forEach(company => {
+      const label = document.createElement('label');
+      label.className = 'checkbox-label';
+      label.innerHTML = `<input type="checkbox" value="${company}" class="company-checkbox"> <span class="custom-checkbox"></span>${company}`;
+      
+      const cb = label.querySelector('input');
+      cb.addEventListener('change', renderJobs);
+      companyFilterList.appendChild(label);
+  });
+}
+
 function renderJobs() {
   jobsContainer.innerHTML = '';
   
   const reqVisa = visaFilter.checked;
   const activeExps = Array.from(expCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+  const companyCheckboxes = document.querySelectorAll('.company-checkbox');
+  const activeCompanies = Array.from(companyCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
   
   const filteredJobs = currentJobs.filter(job => {
       if (reqVisa && !job.visaSponsorship) return false;
@@ -117,6 +142,11 @@ function renderJobs() {
           
           if (!matchesExp) return false;
       }
+      
+      if (activeCompanies.length > 0 && !activeCompanies.includes(job.company)) {
+          return false;
+      }
+      
       return true;
   });
   
@@ -142,6 +172,9 @@ function renderJobs() {
     if (job.source === 'Remotive') portalColor = '#fbbf24';
     if (job.source === 'Arbeitnow') portalColor = '#34d399';
     if (job.source === 'RemoteOK') portalColor = '#ef4444';
+    if (job.source === 'Indeed') portalColor = '#2563eb';
+    if (job.source === 'Seek') portalColor = '#e11d48';
+    if (job.source === 'Jora') portalColor = '#9333ea';
     
     let scoreBadge = '';
     if (job.matchScore) {
@@ -208,6 +241,7 @@ async function fetchJobs() {
     if (data.error) throw new Error(data.error);
     
     currentJobs = data.jobs || [];
+    updateCompanyFilters();
     renderJobs();
   } catch (error) {
     console.error('Error:', error);
