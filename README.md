@@ -65,9 +65,9 @@ When setting your `RESUME_PATH` in the `.env` file, ensure you use proper path f
    ```
 3. Start the Vite dev server:
    ```bash
-   npm run dev -- --port 8080
+   npm run dev -- --port 3000
    ```
-4. Open your browser to `http://localhost:8080`.
+4. Open your browser to `http://localhost:3000`.
 
 ## Architecture Notes
 - The backend relies on a single, globally-shared headless Chromium browser instance initialized on startup to keep memory usage low while querying heavy React SPAs like Indeed and Seek.
