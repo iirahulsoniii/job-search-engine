@@ -175,6 +175,12 @@ function renderJobs() {
     if (job.source === 'Indeed') portalColor = '#2563eb';
     if (job.source === 'Seek') portalColor = '#e11d48';
     if (job.source === 'Jora') portalColor = '#9333ea';
+    if (job.source === 'CareerOne') portalColor = '#f97316';
+    if (job.source === 'Gumtree') portalColor = '#84cc16';
+    if (job.source === 'APS Jobs') portalColor = '#0ea5e9';
+    if (job.source === 'EthicalJobs') portalColor = '#10b981';
+    if (job.source === 'IWorkForNSW') portalColor = '#1d4ed8';
+    if (job.source === 'Careers.Vic') portalColor = '#0369a1';
     
     let scoreBadge = '';
     if (job.matchScore) {

@@ -279,7 +279,223 @@ const scrapers = {
         } catch(e) { return []; } finally {
             if (page) await page.close();
         }
+    }    ,
+    linkedin_au: async (keyword, location, timeFilter) => {
+        try {
+            const url = `https://au.linkedin.com/jobs/search/?keywords=${keyword}&location=Australia${timeFilter || ''}`;
+            const response = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const $ = cheerio.load(response.data);
+            let baseJobs = [];
+            $('.job-search-card').each((index, element) => {
+                const title = $(element).find('h3.base-search-card__title').text().trim();
+                const company = $(element).find('h4.base-search-card__subtitle').text().trim();
+                const jobLocation = $(element).find('span.job-search-card__location').text().trim();
+                let link = $(element).find('a.base-card__full-link').attr('href');
+                if (link && link.includes('?')) link = link.split('?')[0];
+                const time = $(element).find('time.job-search-card__listdate').text().trim() || 
+                             $(element).find('time.job-search-card__listdate--new').text().trim();
+                if (title && company) baseJobs.push({ title, company, location: jobLocation, link, time, source: 'LinkedIn Australia' });
+            });
+            baseJobs = baseJobs.slice(0, 10);
+            for (let job of baseJobs) {
+                try {
+                    const match = job.link.match(/-(\d+)\??/) || job.link.match(/view\/(\d+)/);
+                    const jobId = match ? match[1] : null;
+                    const targetUrl = jobId ? `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}` : job.link;
+                    const res = await axios.get(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                    const $$ = cheerio.load(res.data);
+                    job.description = $$('.show-more-less-html__markup').text().trim() || $$('.description__text').text().trim() || $$('body').text().trim() || '';
+                } catch(e) { job.description = ''; }
+            }
+            return baseJobs;
+        } catch(e) { return []; }
+    },
+    careerone: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://www.careerone.com.au/jobs?keywords=${encodeURIComponent(keyword)}&location=${encodeURIComponent(location)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('.job-card').forEach(card => {
+                    const titleEl = card.querySelector('.job-title');
+                    const companyEl = card.querySelector('.company-name');
+                    const locationEl = card.querySelector('.location');
+                    const linkEl = card.querySelector('a');
+                    if (titleEl && companyEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: companyEl.innerText.trim(),
+                            location: locationEl ? locationEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'CareerOne',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
+    },
+    gumtree: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://www.gumtree.com.au/s-jobs/c9302?q=${encodeURIComponent(keyword)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('.user-ad-collection-new-design__wrapper').forEach(card => {
+                    const titleEl = card.querySelector('.user-ad-row-new-design__title');
+                    const companyEl = card.querySelector('.user-ad-row-new-design__location'); 
+                    const linkEl = card.querySelector('a');
+                    if (titleEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: 'Gumtree Poster',
+                            location: companyEl ? companyEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'Gumtree',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
+    },
+    apsjobs: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://apsjobs.gov.au/s/job-search?keyword=${encodeURIComponent(keyword)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('.cMdt_JobSearchJobCard').forEach(card => {
+                    const titleEl = card.querySelector('.job-title');
+                    const companyEl = card.querySelector('.agency-name');
+                    const locationEl = card.querySelector('.location');
+                    const linkEl = card.querySelector('a');
+                    if (titleEl && companyEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: companyEl.innerText.trim(),
+                            location: locationEl ? locationEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'APS Jobs',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
+    },
+    ethicaljobs: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://www.ethicaljobs.com.au/jobs?keywords=${encodeURIComponent(keyword)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('article').forEach(card => {
+                    const titleEl = card.querySelector('h3');
+                    const companyEl = card.querySelector('.text-gray-600');
+                    const locationEl = card.querySelector('.text-sm');
+                    const linkEl = card.querySelector('a');
+                    if (titleEl && companyEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: companyEl.innerText.trim(),
+                            location: locationEl ? locationEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'EthicalJobs',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
+    },
+    iworkfornsw: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://iworkfor.nsw.gov.au/jobs/all-keywords/${encodeURIComponent(keyword)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('.job-list-item').forEach(card => {
+                    const titleEl = card.querySelector('.job-title');
+                    const companyEl = card.querySelector('.agency');
+                    const locationEl = card.querySelector('.location');
+                    const linkEl = card.querySelector('a');
+                    if (titleEl && companyEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: companyEl.innerText.trim(),
+                            location: locationEl ? locationEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'IWorkForNSW',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
+    },
+    careersvic: async (keyword, location) => {
+        if (!browser) return [];
+        let page = null;
+        try {
+            page = await browser.newPage();
+            const url = `https://careers.vic.gov.au/jobs/search?q=${encodeURIComponent(keyword)}`;
+            await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            const jobs = await page.evaluate(() => {
+                const results = [];
+                document.querySelectorAll('.job-card').forEach(card => {
+                    const titleEl = card.querySelector('h3');
+                    const companyEl = card.querySelector('.department');
+                    const locationEl = card.querySelector('.location');
+                    const linkEl = card.querySelector('a');
+                    if (titleEl && companyEl) {
+                        results.push({
+                            title: titleEl.innerText.trim(),
+                            company: companyEl.innerText.trim(),
+                            location: locationEl ? locationEl.innerText.trim() : '',
+                            link: linkEl ? linkEl.href : '',
+                            time: 'Recently',
+                            source: 'Careers.Vic',
+                            description: ''
+                        });
+                    }
+                });
+                return results;
+            });
+            return jobs.slice(0, 10);
+        } catch(e) { return []; } finally { if (page) await page.close(); }
     }
+
 };
 
 app.get('/api/jobs', async (req, res) => {
@@ -303,6 +519,7 @@ app.get('/api/jobs', async (req, res) => {
         
         const fetchPromises = [];
         if (activePortals.includes('linkedin')) fetchPromises.push(scrapers.linkedin(keyword, location, timeFilter));
+        if (activePortals.includes('linkedin_au')) fetchPromises.push(scrapers.linkedin_au(keyword, location, timeFilter));
         if (activePortals.includes('remotive')) fetchPromises.push(scrapers.remotive(keywordRaw, location));
         if (activePortals.includes('arbeitnow')) fetchPromises.push(scrapers.arbeitnow(keywordRaw, location));
         if (activePortals.includes('remoteok')) fetchPromises.push(scrapers.remoteok(keywordRaw, location));
@@ -310,6 +527,12 @@ app.get('/api/jobs', async (req, res) => {
         if (activePortals.includes('indeed')) fetchPromises.push(scrapers.indeed(keywordRaw, location));
         if (activePortals.includes('seek')) fetchPromises.push(scrapers.seek(keywordRaw, location));
         if (activePortals.includes('jora')) fetchPromises.push(scrapers.jora(keywordRaw, location));
+        if (activePortals.includes('careerone')) fetchPromises.push(scrapers.careerone(keywordRaw, location));
+        if (activePortals.includes('gumtree')) fetchPromises.push(scrapers.gumtree(keywordRaw, location));
+        if (activePortals.includes('apsjobs')) fetchPromises.push(scrapers.apsjobs(keywordRaw, location));
+        if (activePortals.includes('ethicaljobs')) fetchPromises.push(scrapers.ethicaljobs(keywordRaw, location));
+        if (activePortals.includes('iworkfornsw')) fetchPromises.push(scrapers.iworkfornsw(keywordRaw, location));
+        if (activePortals.includes('careersvic')) fetchPromises.push(scrapers.careersvic(keywordRaw, location));
         
         const results = await Promise.allSettled(fetchPromises);
         let allBaseJobs = [];
