@@ -563,6 +563,46 @@ app.get('/api/jobs', async (req, res) => {
     }
 });
 
+async function generateWithFallback(prompt) {
+    if (!ai) throw new Error('GEMINI_API_KEY is not set on the backend server.');
+    
+    const candidateModels = [
+        process.env.GEMINI_MODEL,
+        'gemini-2.5-flash',
+        'gemini-1.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash-8b',
+        'gemini-1.5-pro'
+    ].filter((m, idx, self) => m && self.indexOf(m) === idx);
+
+    let lastError = null;
+    for (const model of candidateModels) {
+        try {
+            const res = await ai.models.generateContent({
+                model,
+                contents: prompt
+            });
+            if (res && res.text) {
+                return res.text;
+            }
+        } catch (err) {
+            console.warn(`Gemini Model [${model}] attempt failed:`, err.message);
+            lastError = err;
+            if (err.message.includes('429') || err.message.includes('quota') || err.message.includes('RESOURCE_EXHAUSTED') || err.message.includes('not found') || err.message.includes('404')) {
+                continue;
+            }
+            throw err;
+        }
+    }
+    
+    if (lastError && (lastError.message.includes('429') || lastError.message.includes('quota') || lastError.message.includes('RESOURCE_EXHAUSTED'))) {
+        throw new Error('Gemini API free quota limit reached. Please wait a minute before retrying or check your API key quota at https://ai.google.dev');
+    }
+    
+    throw lastError || new Error('Failed to generate AI response.');
+}
+
 app.post('/api/score', async (req, res) => {
     try {
         const { link } = req.body;
@@ -586,11 +626,8 @@ app.post('/api/score', async (req, res) => {
         if (!resumeText || !description) return res.json({ score: 'N/A' });
         
         const prompt = `Compare this resume to the job description. Output ONLY a single number between 0 and 100 representing the match percentage. Do not include a % sign or any other text.\n\nResume:\n${resumeText}\n\nJob Description:\n${description}`;
-        const aiRes = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-lite',
-            contents: prompt,
-        });
-        const numMatch = aiRes.text.match(/\d+/);
+        const aiText = await generateWithFallback(prompt);
+        const numMatch = aiText.match(/\d+/);
         res.json({ score: numMatch ? numMatch[0] : 'N/A' });
     } catch (e) {
         res.json({ score: 'Error' });
@@ -632,12 +669,7 @@ ${resumeText}
 
 Task: Write a professional, tailored cover letter for this job based ONLY on my actual resume. DO NOT invent skills or experience I don't have. Keep it concise.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-lite',
-            contents: prompt,
-        });
-        
-        const coverLetter = response.text;
+        const coverLetter = await generateWithFallback(prompt);
         const safeCompany = company.replace(/[^a-z0-9]/gi, '_');
         const safeTitle = title.replace(/[^a-z0-9]/gi, '_');
         const folderPath = path.join(__dirname, '..', 'Applications', `${safeCompany}_${safeTitle}`);
@@ -698,15 +730,11 @@ Instructions:
 - If the question asks about resume match or fit, reference relevant skills from the candidate's resume context (if available).
 - Keep the response clean and easy to read.`;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.0-flash-lite',
-            contents: fullPrompt,
-        });
-        
-        res.json({ answer: response.text });
+        const answer = await generateWithFallback(fullPrompt);
+        res.json({ answer });
     } catch (error) {
         console.error('Error answering job prompt:', error.message);
-        res.status(500).json({ error: 'Failed to process AI question: ' + error.message });
+        res.status(500).json({ error: error.message });
     }
 });
 
