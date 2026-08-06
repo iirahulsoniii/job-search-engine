@@ -16,6 +16,10 @@ let currentJobs = [];
 const locationIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
 const timeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
 const starIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+const sparkleIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></svg>`;
+const copyIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+const closeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
 function renderSkeletons(count = 10) {
   jobsContainer.innerHTML = '';
@@ -23,18 +27,39 @@ function renderSkeletons(count = 10) {
     const skeleton = document.createElement('div');
     skeleton.className = 'job-card glass';
     skeleton.innerHTML = `
-      <div class="job-main-info" style="width:100%">
-          <div class="skeleton skeleton-title"></div>
-          <div class="skeleton skeleton-company"></div>
-          <div class="skeleton skeleton-details"></div>
-      </div>
-      <div class="card-actions" style="width:200px">
-          <div class="skeleton skeleton-btn"></div>
-          <div class="skeleton skeleton-btn"></div>
+      <div class="job-card-top">
+        <div class="job-main-info" style="width:100%">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-company"></div>
+            <div class="skeleton skeleton-details"></div>
+        </div>
+        <div class="card-actions" style="width:200px">
+            <div class="skeleton skeleton-btn"></div>
+            <div class="skeleton skeleton-btn"></div>
+        </div>
       </div>
     `;
     jobsContainer.appendChild(skeleton);
   }
+}
+
+function formatAiAnswer(text) {
+  if (!text) return '';
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^\s*[\-\*]\s+(.*)$/gm, '<li>$1</li>')
+    .replace(/^\s*\d+\.\s+(.*)$/gm, '<li>$1</li>');
+  
+  html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+  html = html.replace(/<\/ul>\s*<ul>/g, '');
+  html = html.replace(/\n\n/g, '<br><br>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
 
 async function handleGenerateCoverLetter(job, buttonElement) {
@@ -93,6 +118,65 @@ async function handleCalculateScore(job, scoreBtnElement) {
     }
   } catch (e) {
     scoreBtnElement.innerHTML = `Match N/A`;
+  }
+}
+
+async function handleAskAi(job, cardElement, customPrompt) {
+  const promptInput = cardElement.querySelector('.ai-prompt-input');
+  const submitBtn = cardElement.querySelector('.ai-submit-btn');
+  const responseContainer = cardElement.querySelector('.ai-response-container');
+  const responseContent = cardElement.querySelector('.ai-response-content');
+  const chipButtons = cardElement.querySelectorAll('.ai-chip');
+
+  const promptText = customPrompt || promptInput.value.trim();
+  if (!promptText) return;
+
+  promptInput.value = promptText;
+  submitBtn.disabled = true;
+  chipButtons.forEach(btn => btn.disabled = true);
+
+  responseContainer.style.display = 'block';
+  responseContent.innerHTML = `
+    <div class="ai-loading">
+      <div class="spinner"></div>
+      <span>Consulting Gemini AI about <strong>${job.title}</strong>...</span>
+    </div>
+  `;
+
+  try {
+    const response = await fetch('http://localhost:5000/api/job-ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        link: job.link,
+        company: job.company,
+        title: job.title,
+        prompt: promptText
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+
+    responseContent.innerHTML = formatAiAnswer(data.answer);
+
+    const copyBtn = cardElement.querySelector('.ai-copy-btn');
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(data.answer);
+        copyBtn.innerHTML = `${checkIcon} Copied!`;
+        setTimeout(() => {
+          copyBtn.innerHTML = `${copyIcon} Copy`;
+        }, 2000);
+      };
+    }
+
+  } catch (err) {
+    console.error('Error asking AI:', err);
+    responseContent.innerHTML = `<span class="ai-error">Failed to get AI answer: ${err.message}</span>`;
+  } finally {
+    submitBtn.disabled = false;
+    chipButtons.forEach(btn => btn.disabled = false);
   }
 }
 
@@ -194,23 +278,52 @@ function renderJobs() {
     }
     
     card.innerHTML = `
-      <div class="job-main-info">
-          <div class="job-header-flex">
-              <h2 class="job-title">${job.title}</h2>
-              <span class="portal-badge" style="background:${portalColor}">${job.source}</span>
-          </div>
-          <div class="job-company">${job.company}</div>
-          <div class="job-details">
-            <span>${locationIcon} ${job.location}</span>
-            <span>${timeIcon} ${job.time || 'Recently'}</span>
-            ${expBadge}
-            ${visaBadge}
-          </div>
+      <div class="job-card-top">
+        <div class="job-main-info">
+            <div class="job-header-flex">
+                <h2 class="job-title">${job.title}</h2>
+                <span class="portal-badge" style="background:${portalColor}">${job.source}</span>
+            </div>
+            <div class="job-company">${job.company}</div>
+            <div class="job-details">
+              <span>${locationIcon} ${job.location}</span>
+              <span>${timeIcon} ${job.time || 'Recently'}</span>
+              ${expBadge}
+              ${visaBadge}
+            </div>
+        </div>
+        <div class="card-actions">
+          ${scoreBadge}
+          <button class="generate-btn">AI Cover Letter</button>
+          <a href="${job.link}" target="_blank" rel="noopener noreferrer" class="apply-btn">Apply Now</a>
+        </div>
       </div>
-      <div class="card-actions">
-        ${scoreBadge}
-        <button class="generate-btn">AI Cover Letter</button>
-        <a href="${job.link}" target="_blank" rel="noopener noreferrer" class="apply-btn">Apply Now</a>
+
+      <div class="job-ai-section">
+        <div class="ai-search-bar">
+          <div class="ai-input-wrapper">
+            <span class="ai-input-icon">${sparkleIcon}</span>
+            <input type="text" class="ai-prompt-input" placeholder="Ask AI about this job... (e.g. key skills, interview questions, resume fit)" />
+            <button class="ai-submit-btn">${sparkleIcon} Ask AI</button>
+          </div>
+          <div class="ai-chips-row">
+            <button class="ai-chip" data-prompt="What are the key requirements and technical skills for this job?">⚡ Key Skills</button>
+            <button class="ai-chip" data-prompt="How well does my resume match this job? Highlight any skill gaps or strong fits.">🎯 Resume Fit</button>
+            <button class="ai-chip" data-prompt="What are 3 to 5 likely technical interview questions for this role?">❓ Interview Prep</button>
+            <button class="ai-chip" data-prompt="Summarize the core responsibilities and daily expectations for this position.">📝 Summary</button>
+          </div>
+        </div>
+
+        <div class="ai-response-container" style="display: none;">
+          <div class="ai-response-header">
+            <div class="ai-response-title">${sparkleIcon} <span>AI Insights</span></div>
+            <div class="ai-response-actions">
+              <button class="ai-copy-btn">${copyIcon} Copy</button>
+              <button class="ai-close-btn">${closeIcon}</button>
+            </div>
+          </div>
+          <div class="ai-response-content"></div>
+        </div>
       </div>
     `;
     
@@ -221,6 +334,30 @@ function renderJobs() {
     if (calcBtn) {
         calcBtn.addEventListener('click', () => handleCalculateScore(job, calcBtn));
     }
+
+    const promptInput = card.querySelector('.ai-prompt-input');
+    const submitBtn = card.querySelector('.ai-submit-btn');
+    const chipButtons = card.querySelectorAll('.ai-chip');
+    const closeBtn = card.querySelector('.ai-close-btn');
+    const responseContainer = card.querySelector('.ai-response-container');
+
+    submitBtn.addEventListener('click', () => handleAskAi(job, card, null));
+    promptInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        handleAskAi(job, card, null);
+      }
+    });
+
+    chipButtons.forEach(chip => {
+      chip.addEventListener('click', () => {
+        const prompt = chip.getAttribute('data-prompt');
+        handleAskAi(job, card, prompt);
+      });
+    });
+
+    closeBtn.addEventListener('click', () => {
+      responseContainer.style.display = 'none';
+    });
     
     jobsContainer.appendChild(card);
   });

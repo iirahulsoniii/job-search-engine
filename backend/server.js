@@ -653,6 +653,63 @@ Task: Write a professional, tailored cover letter for this job based ONLY on my 
     }
 });
 
+app.post('/api/job-ask', async (req, res) => {
+    try {
+        const { link, company, title, prompt: userPrompt } = req.body;
+        if (!link || !userPrompt) return res.status(400).json({ error: 'Missing job link or prompt' });
+        if (!process.env.GEMINI_API_KEY) {
+            return res.status(400).json({ error: 'GEMINI_API_KEY is not set on the backend.' });
+        }
+        
+        let description = '';
+        if (link.includes('linkedin.com')) {
+            const match = link.match(/-(\d+)\??/) || link.match(/view\/(\d+)/);
+            const jobId = match ? match[1] : null;
+            const targetUrl = jobId ? `https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${jobId}` : link;
+            const linkRes = await axios.get(targetUrl, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+            const $$ = cheerio.load(linkRes.data);
+            description = $$('.show-more-less-html__markup').text().trim() || $$('.description__text').text().trim() || '';
+        } else {
+            try {
+                const linkRes = await axios.get(link, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+                const $$ = cheerio.load(linkRes.data);
+                description = $$('body').text().trim();
+            } catch (err) {
+                description = '';
+            }
+        }
+        
+        const resumeText = await getResumeText();
+        const fullPrompt = `You are an AI Job Assistant helping a job seeker evaluate job openings.
+
+Job Title: ${title || 'Unknown'}
+Company: ${company || 'Unknown'}
+
+${description ? `Job Description:\n${description.slice(0, 4000)}\n` : 'Note: Detailed job description could not be scraped directly, so use the title and company info.'}
+
+${resumeText ? `User Resume Context:\n${resumeText.slice(0, 3000)}\n` : ''}
+
+User's Question:
+${userPrompt}
+
+Instructions:
+- Provide a helpful, clear, and well-structured answer.
+- Bullet points and bold text are encouraged for readability.
+- If the question asks about resume match or fit, reference relevant skills from the candidate's resume context (if available).
+- Keep the response clean and easy to read.`;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash-lite',
+            contents: fullPrompt,
+        });
+        
+        res.json({ answer: response.text });
+    } catch (error) {
+        console.error('Error answering job prompt:', error.message);
+        res.status(500).json({ error: 'Failed to process AI question: ' + error.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
